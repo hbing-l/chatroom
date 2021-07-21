@@ -33,7 +33,6 @@ public class Server {
                 sendThread.start();
             }
 
-
         } catch (Exception ex) {
             ex.printStackTrace();
         }
@@ -50,7 +49,6 @@ public class Server {
 
             try {
                 bufferedReader = new BufferedReader(new InputStreamReader(ssocket.getInputStream(), "UTF-8"));
-                //读取一行数据
                 String str;
                 //通过while循环不断读取信息
                 while ((str = bufferedReader.readLine()) != null) {
@@ -78,7 +76,6 @@ public class Server {
             try {
  
                 while(true){
-
                     bufferedReader = new BufferedReader(new InputStreamReader(ssocket.getInputStream(), "UTF-8"));
                     msg = bufferedReader.readLine();
 
@@ -93,7 +90,6 @@ public class Server {
                             sendMsg2Me(ssocket, "You have logined");
                             loginMsg(userName);
                         }
-
                     }
 
                     if(msg.equals("/quit")){
@@ -142,12 +138,10 @@ public class Server {
                     }
 
                     if(msg.equals("/who")){
-
                         showAllClient(ssocket);
-
                     }
 
-                    if(msg.equals("/history")){
+                    if(msg.startsWith("/history")){
 
                         String[] msgLine = msg.split(" ");
                         int start = 0;
@@ -157,19 +151,19 @@ public class Server {
                             end = Integer.parseInt(msgLine[2]);
                         }
                         showHistoryChatRecord(ssocket, start, end);
+
                     }
-
                 }
-
                 
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
-        
     }
 
+    //查看历史消息
     public void showHistoryChatRecord(Socket socket, int start, int end){
+
         try{
             if(!msgRecord.containsKey(socket)){
                 PrintStream printStream = new PrintStream(socket.getOutputStream());
@@ -198,6 +192,7 @@ public class Server {
         
     }
 
+    //保存聊天消息
     public void addChatMsg(Socket socket, String msg) throws IOException {
 
         if(msgRecord.containsKey(socket)){
@@ -214,27 +209,25 @@ public class Server {
 
     }
 
+    //登录操作
     public void loginMsg(String userName) throws IOException {
-        //1.将Map集合转换为Set集合
+
         Set<Map.Entry<String,Socket>> set = userDB.entrySet();
 
-        //3.遍历Set集合将群聊信息发给每一个客户端
         for(Map.Entry<String,Socket> entry:set){
             if(!entry.getKey().equals(userName)){
-                //取得客户端的Socket对象
                 Socket client = entry.getValue();
-                //取得client客户端的输出流
                 PrintStream printStream = new PrintStream(client.getOutputStream());
                 String msg = userName + " has logined";
                 addChatMsg(client, msg);
                 printStream.println(msg);
             }
-            
         }
     }
 
-
+    //群聊
     public void groupChat(Socket socket,String msg) throws IOException {
+
         //1.将Map集合转换为Set集合
         Set<Map.Entry<String,Socket>> set = userDB.entrySet();
         //2.遍历Set集合找到发起群聊信息的用户
@@ -265,25 +258,31 @@ public class Server {
             pw.flush();
 
         }
+
     }
     
+    //私聊
     private void privateChat(Socket socket, String myName,String userName,String msg) throws IOException {
+
         if(!userDB.containsKey(userName)){
             sendMsg2Me(socket, userName + " is not online.");
-        }else if(myName == userName){
+        }else if(myName.equals(userName)){
             sendMsg2Me(socket, "Stop talking to yourself!");
         }else{
             Socket client = userDB.get(userName);
-            //3.获取私聊客户端的输出流,将私聊信息发送到指定客户端
+            //获取私聊客户端的输出流,将私聊信息发送到指定客户端
             PrintStream printStream = new PrintStream(client.getOutputStream());
             String sendMsg = myName + "对你说:" + msg;
             addChatMsg(client, sendMsg);
             printStream.println(myName + "对你说:" + msg);
             sendMsg2Me(socket, "你对" + userName + "说:" + msg);
         }
+
     }
 
+    //获取用户姓名
     public String getUserName(Socket socket){
+
         Set<Map.Entry<String,Socket>> set = userDB.entrySet();
         String userName = null;
         for(Map.Entry<String,Socket> entry:set){
@@ -295,7 +294,9 @@ public class Server {
         return userName;
     }
 
+    //给自己发送消息
     public void sendMsg2Me(Socket socket, String msg) throws IOException {
+
         DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
         pw = new PrintWriter(new OutputStreamWriter(dos)); //不带自动刷新的Writer
         pw.println(msg);
@@ -305,37 +306,37 @@ public class Server {
 
 	}
 
+    //给除自己以外的其他人发送消息
     public void sendMsg2Other(String userName, String msg) throws IOException {
+
         Set<Map.Entry<String,Socket>> set = userDB.entrySet();
 
-        //3.遍历Set集合将群聊信息发给每一个客户端
         for(Map.Entry<String,Socket> entry:set){
             if(!entry.getKey().equals(userName)){
-                //取得客户端的Socket对象
                 Socket client = entry.getValue();
-                //取得client客户端的输出流
                 PrintStream printStream = new PrintStream(client.getOutputStream());
                 addChatMsg(client, msg);
                 printStream.println(msg);
             }
-            
         }
+
 	}
 
+    //预设消息hi
     public void sayHi(String myName, String chatName) throws IOException {
+
         Set<Map.Entry<String,Socket>> set = userDB.entrySet();
 
         for(Map.Entry<String,Socket> entry:set){
-            //取得客户端的Socket对象
             Socket client = entry.getValue();
-            //取得client客户端的输出流
             PrintStream printStream = new PrintStream(client.getOutputStream());
             String sendMsg;
-            if(entry.getKey() == myName){
+
+            if(entry.getKey().equals(myName)){
                 sendMsg = "你向" + chatName + "打招呼：“Hi，你好啊~”";
                 addChatMsg(client, sendMsg);
                 printStream.println(sendMsg);
-            }else if(entry.getKey() == chatName){
+            }else if(entry.getKey().equals(chatName)){
                 sendMsg = myName + "向你打招呼：“Hi，你好啊~”";
                 addChatMsg(client, sendMsg);
                 printStream.println(sendMsg);
@@ -344,16 +345,18 @@ public class Server {
                 addChatMsg(client, sendMsg);
                 printStream.println(sendMsg);
             }
+
         }
 
     }
 
+    //显示所有用户
     public void showAllClient(Socket socket) throws IOException {
+
         Set<Map.Entry<String,Socket>> set = userDB.entrySet();
         PrintStream printStream = new PrintStream(socket.getOutputStream());
         int num = 0;
 
-        //3.遍历Set集合将群聊信息发给每一个客户端
         String sendMsg = "";
         for(Map.Entry<String,Socket> entry:set){
             String userName = entry.getKey();
@@ -368,8 +371,9 @@ public class Server {
         
     }
 
+    //用户退出
     private void userExit(Socket socket){
-        //1.利用socket取得对应的Key值
+
         String userName = null;
         for(String key:userDB.keySet()){
             if(userDB.get(key).equals(socket)){
@@ -382,6 +386,7 @@ public class Server {
             sendMsg2Me(socket, "You have quited.");
             sendMsg2Other(userName, exitMsg);
             
+            //移除用户信息、消息记录以及客户端
             msgRecord.remove(socket);
             clients.remove(socket);
             userDB.remove(userName, socket);

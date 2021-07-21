@@ -4,6 +4,7 @@ import java.io.*;
 import java.net.*;
 
 public class Client {
+
     public int port = 12345;
     Socket socket = null;
 
@@ -15,6 +16,7 @@ public class Client {
 
         try {
             socket = new Socket("localhost", port);
+            //第一步 登录
             System.out.println("Please login");
             login();
           
@@ -24,13 +26,13 @@ public class Client {
     }
 
     public void login(){
+
         try{
             BufferedReader br = new BufferedReader(new InputStreamReader(System.in, "UTF-8"));
             String msg = null;
             msg = br.readLine()+"\r\n";
             String firstLoginName = msg.split(" ")[0];
 
-    
             if (!firstLoginName.equals("/login") && !firstLoginName.equals("/quit")) {
                 System.out.println("Invalid command");
                 return;
@@ -41,6 +43,7 @@ public class Client {
                 out.write(msg.getBytes());
                 out.flush();
 
+                //登录成功后开启用户接收和发送线程
                 Thread send = new SendServerthread();
                 Thread receive = new ReceiveServerthread();
 
@@ -53,11 +56,11 @@ public class Client {
         
     }
 
+    //发送线程
     class SendServerthread extends Thread {
 
         public void run() {
             try {
-                                
                 while(true){
                     //获取客户端的输出流
                     OutputStream out = socket.getOutputStream();
@@ -77,13 +80,12 @@ public class Client {
         }
     }
 
+    //接收线程
     class ReceiveServerthread extends Thread {
 
         public void run() {
-
-            //获取客户端输入流
             try {
-
+                //获取客户端输入流
                 BufferedReader bufferinput;
                 InputStream input = socket.getInputStream();
                 bufferinput = new BufferedReader(new InputStreamReader(input, "UTF-8"));
