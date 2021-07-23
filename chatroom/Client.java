@@ -2,6 +2,8 @@ package chatroom;
 
 import java.io.*;
 import java.net.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Client {
 
@@ -19,6 +21,14 @@ public class Client {
             //第一步 登录
             System.out.println("Please login");
             login();
+           
+            //登录成功后开启用户接收和发送线程
+            SendServerthread send = new SendServerthread();
+            ReceiveServerthread receive = new ReceiveServerthread();
+
+            send.start();
+            receive.start();
+            
           
         } catch (Exception e) {
             e.printStackTrace();
@@ -28,28 +38,38 @@ public class Client {
     public void login(){
 
         try{
-            BufferedReader br = new BufferedReader(new InputStreamReader(System.in, "UTF-8"));
-            String msg = null;
-            msg = br.readLine()+"\r\n";
-            String firstLoginName = msg.split(" ")[0];
 
-            if (!firstLoginName.equals("/login") && !firstLoginName.equals("/quit")) {
-                System.out.println("Invalid command");
-                return;
-            }else if(firstLoginName.equals("/quit")){
-                return;
-            }else if(firstLoginName.equals("/login")){
-                OutputStream out = socket.getOutputStream();
-                out.write(msg.getBytes());
-                out.flush();
+            while(true){
 
-                //登录成功后开启用户接收和发送线程
-                Thread send = new SendServerthread();
-                Thread receive = new ReceiveServerthread();
+                BufferedReader br = new BufferedReader(new InputStreamReader(System.in, "UTF-8"));
+                String msg = null;
+                msg = br.readLine();
 
-                send.start();
-                receive.start();
+                String pLogin = "/login\\s+(\\w+)";
+                String pQuit = "/quit";
+
+                Pattern patternLogin = Pattern.compile(pLogin);
+                Pattern patternQuit = Pattern.compile(pQuit);
+
+                Matcher matcherLogin = patternLogin.matcher(msg);
+                Matcher matcherQuit = patternQuit.matcher(msg);
+
+                if(matcherLogin.matches()){
+                    msg += "\r\n";
+                    OutputStream out = socket.getOutputStream();
+                    out.write(msg.getBytes());
+                    out.flush();
+                    break;
+                }else if(matcherQuit.matches()){
+                    socket.close();
+                    //终止程序
+                    System.exit(0);
+                    return;
+                }else{
+                    System.out.println("Invalid command");
+                }
             }
+            
         } catch (Exception e) {
             e.printStackTrace();
         }

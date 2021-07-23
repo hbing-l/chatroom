@@ -2,13 +2,16 @@ package chatroom;
 import java.net.*;
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Server {
     int port;
     List<Socket> clients;
     ServerSocket server;
-    private static Map<String, Socket>userDB = new HashMap();
-    private static Map<Socket, List<String>>msgRecord = new HashMap();
+    private static Map<String, Socket>userDB = new ConcurrentHashMap<String, Socket>();
+    private static Map<Socket, List<String>>msgRecord = new ConcurrentHashMap<Socket, List<String>>();
     private BufferedReader bufferedReader = null;
     private PrintWriter pw = null;
 
@@ -79,36 +82,48 @@ public class Server {
                     bufferedReader = new BufferedReader(new InputStreamReader(ssocket.getInputStream(), "UTF-8"));
                     msg = bufferedReader.readLine();
 
-                    //处理客户端输入的字符串
-                    if(msg.startsWith("/login")){
+                    //定义正则表达式
+                    String pLogin = "/login\\s+(\\w+)";
+                    String pQuit = "/quit";
+                    String pHi = "//hi(\\s+(\\w+))?";
+                    String pTo = "/to\\s(\\w+)\\s([^.]*.)";
+                    String pWho = "/who";
+                    String pHistory = "/history(\\s+(\\d+)\\s+(\\d+))?";
+                    
+                    Pattern patternLogin = Pattern.compile(pLogin);
+                    Pattern patternQuit = Pattern.compile(pQuit);
+                    Pattern patternHi = Pattern.compile(pHi);
+                    Pattern patternTo = Pattern.compile(pTo);
+                    Pattern patternWho = Pattern.compile(pWho);
+                    Pattern patternHistory = Pattern.compile(pHistory);
 
-                        String userName = msg.split(" ")[1];
-                        if(userDB.containsKey(userName)){
+                    Matcher matcherLogin = patternLogin.matcher(msg);
+                    Matcher matcherQuit = patternQuit.matcher(msg);
+                    Matcher matcherHi = patternHi.matcher(msg);
+                    Matcher matcherTo = patternTo.matcher(msg);
+                    Matcher matcherWho = patternWho.matcher(msg);
+                    Matcher matcherHistory = patternHistory.matcher(msg);
+
+                    if(matcherLogin.matches()){
+
+                        String userName = matcherLogin.group(1);
+                        if(userDB.putIfAbsent(userName, ssocket) != null){
                             sendMsg2Me(ssocket, "Name exist, please choose anthoer name.");
                         }else{
-                            userDB.put(userName, ssocket);
                             sendMsg2Me(ssocket, "You have logined");
                             loginMsg(userName);
                         }
-                    }
 
-                    if(msg.equals("/quit")){
+                    }else if(matcherQuit.matches()){
 
                         userExit(ssocket);
                         break;
-                    
-                    }
 
-                    if(!msg.startsWith("/")){
-                        groupChat(ssocket, msg);
-                    }
-
-                    if(msg.startsWith("//hi")){
+                    }else if(matcherHi.matches()){
 
                         String myName = getUserName(ssocket);
-
-                        if(msg.split(" ").length > 1){
-                            String userName = msg.split(" ")[1];
+                        if(matcherHi.group(1) != null){
+                            String userName = matcherHi.group(2);
                             sayHi(myName, userName);
                         }else{
                             String msg2me = "你向大家打招呼，“Hi，大家好！我来咯~”";
@@ -117,42 +132,34 @@ public class Server {
                             sendMsg2Other(myName, msg2other);
                         }
 
-                    }
-
-                    if(msg.startsWith("/to")){
+                    }else if(matcherTo.matches()){
 
                         String myName = getUserName(ssocket);
-                        String[] msgLine = msg.split(" ");
-                        try{
-                            String chatName = msgLine[1];
-                            String chatMsg = msgLine[2];
-                            for(int i = 3; i < msgLine.length; i++){
-                                chatMsg = chatMsg + " " + msgLine[i];
-                            }
-                            privateChat(ssocket, myName, chatName, chatMsg);
+                        String chatName = matcherTo.group(1);
+                        String chatMsg = matcherTo.group(2);
+                        privateChat(ssocket, myName, chatName, chatMsg);
 
-                        } catch (Exception e){
-                            e.printStackTrace();
-                        }   
+                    }else if(matcherWho.matches()){
 
-                    }
-
-                    if(msg.equals("/who")){
                         showAllClient(ssocket);
-                    }
 
-                    if(msg.startsWith("/history")){
+                    }else if(matcherHistory.matches()){
 
-                        String[] msgLine = msg.split(" ");
                         int start = 0;
                         int end = 0;
-                        if(msgLine.length == 3){
-                            start = Integer.parseInt(msgLine[1]);
-                            end = Integer.parseInt(msgLine[2]);
+                        if(matcherHistory.group(1) != null){
+                            start = Integer.parseInt(matcherHistory.group(2));
+                            end = Integer.parseInt(matcherHistory.group(3));
                         }
+
                         showHistoryChatRecord(ssocket, start, end);
 
+                    }else{
+
+                        groupChat(ssocket, msg);
+
                     }
+
                 }
                 
             } catch (Exception e) {
